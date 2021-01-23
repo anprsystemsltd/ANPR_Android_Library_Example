@@ -182,11 +182,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
         }
 
         if (nativeOutputDecoder.numberOfChars > 0) {
-            val recognizedString = charsToString(nativeOutputDecoder.charBuffer)
+            val recognizedString = nativeOutputDecoder.plate
             if (recognizedString == lastRecognizedString) {
                 recognizingConunter++
                 if (recognizingConunter >= 2) {
-                    val result = recognizedString + " - " + charsToString(nativeOutputDecoder.syntaxName)
+                    val result = recognizedString + " - " + nativeOutputDecoder.syntaxText
                     val now = System.currentTimeMillis()
                     results.removeAll { it.second < System.currentTimeMillis() }
                     results.find { it.first == result }?:let {
@@ -195,6 +195,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
                         title = result
                     }
                     lastRecognizedString = ""
+                    recognizingConunter = 0
                 }
             } else {
                 lastRecognizedString = recognizedString
@@ -221,15 +222,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
             }
         }.create().show()
     }
-
-    private fun charsToString(chars: CharArray) =
-        StringBuilder().apply {
-            chars.forEach {
-                if (it.toInt() != 0) {
-                    append(it)
-                }
-            }
-        }.toString()
 
     companion object {
         private const val PERMISSION_REQUEST = 1
