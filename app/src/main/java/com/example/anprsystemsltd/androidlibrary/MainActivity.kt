@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
         javaToNative.loadNativeLibrary("lib_anpr_Norway.so") // you can give full file name
 //        javaToNative.loadNativeLibrary("_anpr_Norway") // or you can give without "lib" and ".so"
 
-        javaToNative.initNativeLibrary(this)
+        javaToNative.initNativeLibrary()
 
         libraryInitialized = true
     }
