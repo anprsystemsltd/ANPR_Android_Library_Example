@@ -117,9 +117,16 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
         } == null
     }
 
+/*
+    The ANPR native so library file name must begin width "lib" and must end with ".so"
+    For example: "lib_anpr_Norway.so"
+*/
     private fun initializeAnprNativeLibrary() {
-        javaToNative.loadNativeLibrary()
+        javaToNative.loadNativeLibrary("lib_anpr_Norway.so") // you can give full file name
+//        javaToNative.loadNativeLibrary("_anpr_Norway") // or you can give without "lib" and ".so"
+
         javaToNative.initNativeLibrary(this)
+
         libraryInitialized = true
     }
 
