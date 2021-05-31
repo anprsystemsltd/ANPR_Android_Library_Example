@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import android.hardware.Camera
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.SurfaceHolder
+import android.view.View
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +16,7 @@ import com.anpr.sdk.mobile.decoder.*
 import com.anpr.sdk.mobile.license.LicenseManager
 import kotlin.system.exitProcess
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 
 @SuppressWarnings("deprecation")
 class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.PreviewCallback {
@@ -34,7 +37,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
     private var recognizingConunter = 0
     private val results = mutableListOf<Pair<String, Long>>()
 
+    var deviceId = ""
+    private var licenceFoundOnServer = false
 
+    private var infoDialog: InfoDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,7 +81,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST) {
             if (grantResults.find { it != PackageManager.PERMISSION_GRANTED } != null) {
-                showError("Without these permissions, the app cannot be used.")
+                showInfo("Without these permissions, the app cannot be used.")
             } else {
                 recreate()
             }
@@ -87,28 +93,40 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
     private fun initializeActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        clearEnvironment()
+
+        setContentView(R.layout.activity_main)
+
         if (!checkPermissions()) {
             askPermissions()
             return
         }
 
-        title = "Device id:${licenseManager.getDeviceId(this)}"
+        deviceId = licenseManager.getDeviceId(this)
+        title = "Android ID:$deviceId"
 
         licenseManager.processLicense(this) { success ->
-            if (!success) {
-                runOnUiThread {
-                    showError("Not licensed", false)
-                }
-            }
+            licenceFoundOnServer = success
             initializeAnprNativeLibrary()
+
+            runOnUiThread {
+                iwInfo.visibility = View.VISIBLE
+                showInfoDialog()
+            }
         }
 
-        setContentView(R.layout.activity_main)
         surfaceCamera.holder.also {
             it.addCallback(this)
             it.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
         }
 
+        iwInfo.setOnClickListener { showInfoDialog() }
+
+    }
+
+    private fun clearEnvironment() {
+//        try { File("${filesDir.absolutePath}/anprlicense.txt").delete() } catch (e: Exception) {}
+        try { File("/sdcard/class.txt").delete() } catch (e: Exception) {}
     }
 
     private fun checkPermissions() : Boolean = if (Build.VERSION.SDK_INT < 23) true else {
@@ -121,10 +139,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
     The ANPR native so library file name must begin width "lib" and must end with ".so"
 */
     private fun initializeAnprNativeLibrary() {
-        javaToNative.loadNativeLibrary("lib_anpr_Spain.so") // you can give full file name
+        javaToNative.setLogListener {
+            Log.d(LOG_TAG, "Log from native library:$it")
+        }
+
+    javaToNative.loadNativeLibrary("lib_anpr_Hungary.so") // you can give full file name
 //        javaToNative.loadNativeLibrary("_anpr_Spain") // or you can give without "lib" and ".so"
 
-        javaToNative.initNativeLibrary()
+        javaToNative.initNativeLibrary(this)
 
         libraryInitialized = true
     }
@@ -156,7 +178,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
                 }
             }
         } catch (e: Exception) {}
-        if (!success) showError("Error to initialize camera!")
+        if (!success) showInfo("Error to initialize camera!")
     }
 
     private fun closeCamera() {
@@ -184,7 +206,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
 
         if (!nativeOutputDecoder.isValid) {
             camera?.stopPreview()
-            showError("Invalid data from ANPPR library!")
+            showInfo("Invalid data from ANPPR library!")
         }
 
         if (nativeOutputDecoder.numberOfChars > 0) {
@@ -217,11 +239,31 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
         }
     }
 
-    private fun showError(msg: String, fatal: Boolean = true) {
+    private fun showInfoDialog() {
+        val closeListener = object : InfoDialog.CloseListener {
+            override fun onClosed() {
+                infoDialog = null
+            }
+        }
+        infoDialog?:let {
+            val params = InfoDialog.Parameter(
+                libraryInterface = javaToNative,
+                deviceId = deviceId,
+                licenceOnServer = licenceFoundOnServer
+            )
+            infoDialog = InfoDialog(
+                this,
+                closeListener,
+                params
+            ).apply { show() }
+        }
+    }
+
+    private fun showInfo(msg: String, fatalError: Boolean = true) {
         AlertDialog.Builder(this).apply {
             setMessage(msg)
             setPositiveButton("OK") { _, _ ->
-                if (fatal) {
+                if (fatalError) {
                     finish()
                     exitProcess(1)
                 }
@@ -230,6 +272,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, Camera.Preview
     }
 
     companion object {
+        private const val LOG_TAG = "DEBINFO"
+
         private const val PERMISSION_REQUEST = 1
 
         private val permissions = listOf(
