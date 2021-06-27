@@ -65,10 +65,10 @@ class InfoDialog(
         DisplayMetrics().apply {
             display.getMetrics(this)
             width = (widthPixels * 0.9).toInt()
-            height = (heightPixels * 0.8).toInt()
-            textSizeLarge = (height * 0.03).toFloat()
-            textSizeNormal = (textSizeLarge * 0.75).toFloat()
-            textSizeSmall = (textSizeNormal * 0.6).toFloat()
+            height = (heightPixels * 0.9).toInt()
+            textSizeLarge = (height * 0.02).toFloat()
+            textSizeNormal = (textSizeLarge * 0.8).toFloat()
+            textSizeSmall = (textSizeNormal * 0.7).toFloat()
         }
     }
 
@@ -85,7 +85,6 @@ class InfoDialog(
         twDataAndroidId.textSize = textSizeNormal
         twLabelLicensServer.textSize = textSizeNormal
         twDataLicensServer.textSize = textSizeNormal
-        flLogListHeader.layoutParams.height = (textSizeNormal * 3).toInt()
         twLogListHeader.textSize = textSizeNormal
         logListAdapter = LogListAdapter(context, textSizeSmall)
     }
